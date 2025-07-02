@@ -9,12 +9,12 @@ interface SidebarProps {
 }
 
 const navigationItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+  { id: 'dashboard', label: 'Tableau de Bord', icon: BarChart3 },
   { id: 'pipeline', label: 'Pipeline', icon: GitBranch },
-  { id: 'security', label: 'Security Scans', icon: Lock },
-  { id: 'quality', label: 'Code Quality', icon: ChartLine },
-  { id: 'compliance', label: 'Compliance', icon: ClipboardCheck },
-  { id: 'docs', label: 'Best Practices', icon: Book },
+  { id: 'security', label: 'Analyses Sécurité', icon: Lock },
+  { id: 'quality', label: 'Qualité Code', icon: ChartLine },
+  { id: 'compliance', label: 'Conformité', icon: ClipboardCheck },
+  { id: 'docs', label: 'Bonnes Pratiques', icon: Book },
   { id: 'architecture', label: 'Architecture', icon: Network },
 ] as const;
 

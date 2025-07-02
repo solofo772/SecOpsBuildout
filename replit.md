@@ -93,9 +93,16 @@ This is a full-stack DevSecOps dashboard application built with a modern React f
 
 ## User Preferences
 
-Preferred communication style: Simple, everyday language.
+Preferred communication style: Simple, everyday language (French).
 
 ## Changelog
 
 Changelog:
-- July 02, 2025. Initial setup
+- July 02, 2025. Initial setup of DevSecOps platform
+- July 02, 2025. Complete rebuild with enhanced architecture:
+  * Expanded data model with comprehensive tables for pipelines, security, quality, tests, deployments, and compliance
+  * Added French translations throughout the UI
+  * Created compliance dashboard component
+  * Implemented detailed storage layer with realistic sample data
+  * Added comprehensive API routes for all DevSecOps functions
+  * Enhanced sidebar navigation with French labels

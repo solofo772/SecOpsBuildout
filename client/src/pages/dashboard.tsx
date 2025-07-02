@@ -6,8 +6,9 @@ import { SecurityDashboard } from "@/components/security-dashboard";
 import { QualityMetrics } from "@/components/quality-metrics";
 import { ArchitectureDiagram } from "@/components/architecture-diagram";
 import { BestPractices } from "@/components/best-practices";
+import { ComplianceDashboard } from "@/components/compliance-dashboard";
 import { Button } from "@/components/ui/button";
-import { Play, User } from "lucide-react";
+import { Play, User, Settings } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -25,14 +26,14 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/pipeline/current"] });
       queryClient.invalidateQueries({ queryKey: ["/api/pipeline/runs"] });
       toast({
-        title: "Pipeline Started",
-        description: "New pipeline run has been initiated successfully.",
+        title: "Pipeline Démarré",
+        description: "Une nouvelle exécution de pipeline a été initiée avec succès.",
       });
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to start pipeline run.",
+        title: "Erreur",
+        description: "Échec du démarrage du pipeline.",
         variant: "destructive",
       });
     },
@@ -84,12 +85,7 @@ export default function Dashboard() {
           </>
         );
       case 'compliance':
-        return (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Compliance Dashboard</h3>
-            <p className="text-gray-600">Compliance status, audit reports, and regulatory requirements tracking.</p>
-          </div>
-        );
+        return <ComplianceDashboard />;
       case 'docs':
         return <BestPractices />;
       case 'architecture':
@@ -102,21 +98,21 @@ export default function Dashboard() {
   const getSectionTitle = () => {
     switch (activeSection) {
       case 'dashboard':
-        return { title: "DevSecOps Dashboard", subtitle: "Monitor your secure development lifecycle" };
+        return { title: "Tableau de Bord DevSecOps", subtitle: "Surveillez votre cycle de développement sécurisé" };
       case 'pipeline':
-        return { title: "CI/CD Pipeline", subtitle: "Manage and monitor your deployment pipeline" };
+        return { title: "Pipeline CI/CD", subtitle: "Gérez et surveillez votre pipeline de déploiement" };
       case 'security':
-        return { title: "Security Scans", subtitle: "Security vulnerability assessment and management" };
+        return { title: "Analyses de Sécurité", subtitle: "Évaluation et gestion des vulnérabilités de sécurité" };
       case 'quality':
-        return { title: "Code Quality", subtitle: "Code quality metrics and analysis" };
+        return { title: "Qualité du Code", subtitle: "Métriques et analyse de la qualité du code" };
       case 'compliance':
-        return { title: "Compliance", subtitle: "Regulatory compliance and audit management" };
+        return { title: "Conformité", subtitle: "Gestion de la conformité réglementaire et audit" };
       case 'docs':
-        return { title: "Best Practices", subtitle: "DevSecOps implementation guidelines" };
+        return { title: "Meilleures Pratiques", subtitle: "Guide d'implémentation DevSecOps" };
       case 'architecture':
-        return { title: "Architecture", subtitle: "System architecture and design patterns" };
+        return { title: "Architecture", subtitle: "Architecture système et modèles de conception" };
       default:
-        return { title: "DevSecOps Dashboard", subtitle: "Monitor your secure development lifecycle" };
+        return { title: "Tableau de Bord DevSecOps", subtitle: "Surveillez votre cycle de développement sécurisé" };
     }
   };
 
@@ -141,7 +137,7 @@ export default function Dashboard() {
                 className="bg-primary hover:bg-primary/90"
               >
                 <Play className="mr-2 h-4 w-4" />
-                {startPipelineMutation.isPending ? "Starting..." : "Run Pipeline"}
+                {startPipelineMutation.isPending ? "Démarrage..." : "Lancer Pipeline"}
               </Button>
               <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
                 <User className="h-4 w-4 text-gray-600" />
