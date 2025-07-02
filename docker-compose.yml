@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # Dashboard DevSecOps principal
+  devsecops-dashboard:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://devsecops:devsecops123@postgres:5432/devsecops_db
+      - WEBHOOK_SECRET=change-this-secret-key
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - dashboard_logs:/app/logs
+      - dashboard_data:/app/data
+    restart: unless-stopped
+    networks:
+      - devsecops-network
+
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=devsecops_db
+      - POSTGRES_USER=devsecops
+      - POSTGRES_PASSWORD=devsecops123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docs/sql:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - devsecops-network
+
+  # Redis pour la mise en cache et les sessions
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - devsecops-network
+
+  # SonarQube pour l'analyse de qualité
+  sonarqube:
+    image: sonarqube:community
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_JDBC_URL=jdbc:postgresql://postgres:5432/sonarqube
+      - SONAR_JDBC_USERNAME=devsecops
+      - SONAR_JDBC_PASSWORD=devsecops123
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - devsecops-network
+
+  # Proxy Nginx pour le routage
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - devsecops-dashboard
+      - sonarqube
+    restart: unless-stopped
+    networks:
+      - devsecops-network
+
+  # Agent de surveillance et monitoring
+  monitoring-agent:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - devsecops-network
+
+  # Grafana pour les tableaux de bord
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_DATABASE_TYPE=postgres
+      - GF_DATABASE_HOST=postgres:5432
+      - GF_DATABASE_NAME=grafana
+      - GF_DATABASE_USER=devsecops
+      - GF_DATABASE_PASSWORD=devsecops123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    depends_on:
+      - postgres
+      - monitoring-agent
+    restart: unless-stopped
+    networks:
+      - devsecops-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  dashboard_logs:
+  dashboard_data:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  devsecops-network:
+    driver: bridge

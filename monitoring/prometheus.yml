@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Dashboard DevSecOps
+  - job_name: 'devsecops-dashboard'
+    static_configs:
+      - targets: ['devsecops-dashboard:5000']
+    metrics_path: '/api/metrics/prometheus'
+    scrape_interval: 30s
+
+  # Node.js application metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['devsecops-dashboard:5000']
+    metrics_path: '/api/health'
+    scrape_interval: 15s
+
+  # SonarQube metrics
+  - job_name: 'sonarqube'
+    static_configs:
+      - targets: ['sonarqube:9000']
+    metrics_path: '/api/system/health'
+    scrape_interval: 60s
+
+  # PostgreSQL metrics (via postgres_exporter si installé)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+    scrape_interval: 30s
+
+  # Redis metrics
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
