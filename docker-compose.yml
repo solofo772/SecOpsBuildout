@@ -3,26 +3,37 @@ version: '3.8'
 services:
   # Dashboard DevSecOps principal
   devsecops-dashboard:
-    build: .
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: devsecops-dashboard
     ports:
-      - "5000:5000"
+      - "5001:5000"  # Port différent pour éviter le conflit
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://devsecops:devsecops123@postgres:5432/devsecops_db
-      - WEBHOOK_SECRET=change-this-secret-key
+      - REDIS_URL=redis://redis:6379
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-changeme}
+      - SESSION_SECRET=${SESSION_SECRET:-changeme}
     depends_on:
-      - postgres
-      - redis
-    volumes:
-      - dashboard_logs:/app/logs
-      - dashboard_data:/app/data
-    restart: unless-stopped
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - devsecops-network
+    restart: unless-stopped
 
   # Base de données PostgreSQL
   postgres:
     image: postgres:15-alpine
+    container_name: postgres-db
     environment:
       - POSTGRES_DB=devsecops_db
       - POSTGRES_USER=devsecops
@@ -31,111 +42,163 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./docs/sql:/docker-entrypoint-initdb.d
     ports:
-      - "5432:5432"
-    restart: unless-stopped
+      - "5433:5432"  # Port différent pour éviter les conflits
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devsecops -d devsecops_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - devsecops-network
-
-  # Redis pour la mise en cache et les sessions
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
     restart: unless-stopped
-    networks:
-      - devsecops-network
 
-  # SonarQube pour l'analyse de qualité
+  # SonarQube pour l'analyse de code
   sonarqube:
-    image: sonarqube:community
-    ports:
-      - "9000:9000"
+    image: sonarqube:10-community
+    container_name: sonarqube
     environment:
-      - SONAR_JDBC_URL=jdbc:postgresql://postgres:5432/sonarqube
-      - SONAR_JDBC_USERNAME=devsecops
-      - SONAR_JDBC_PASSWORD=devsecops123
+      - SONAR_JDBC_URL=jdbc:postgresql://postgres:5432/sonarqube_db
+      - SONAR_JDBC_USERNAME=sonarqube
+      - SONAR_JDBC_PASSWORD=sonarqube123
       - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
     volumes:
       - sonarqube_data:/opt/sonarqube/data
       - sonarqube_logs:/opt/sonarqube/logs
       - sonarqube_extensions:/opt/sonarqube/extensions
-    depends_on:
-      - postgres
-    restart: unless-stopped
-    networks:
-      - devsecops-network
-
-  # Proxy Nginx pour le routage
-  nginx:
-    image: nginx:alpine
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
+      - "9000:9000"
     depends_on:
-      - devsecops-dashboard
-      - sonarqube
-    restart: unless-stopped
+      postgres-sonar:
+        condition: service_healthy
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     networks:
       - devsecops-network
+    restart: unless-stopped
 
-  # Agent de surveillance et monitoring
+  # Base de données dédiée à SonarQube
+  postgres-sonar:
+    image: postgres:15-alpine
+    container_name: postgres-sonar
+    environment:
+      - POSTGRES_DB=sonarqube_db
+      - POSTGRES_USER=sonarqube
+      - POSTGRES_PASSWORD=sonarqube123
+    volumes:
+      - postgres_sonar_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonarqube -d sonarqube_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devsecops-network
+    restart: unless-stopped
+
+  # Redis pour le cache
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - devsecops-network
+    restart: unless-stopped
+
+  # Prometheus pour les métriques
   monitoring-agent:
     image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
+    container_name: prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=15d'
       - '--web.enable-lifecycle'
-    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    depends_on:
+      - devsecops-dashboard
     networks:
       - devsecops-network
+    restart: unless-stopped
 
-  # Grafana pour les tableaux de bord
+  # Grafana pour la visualisation
   grafana:
     image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin123}
+      - GF_USERS_VIEWERS_CAN_EDIT=false
+      - GF_LOG_MODE=console
+      - GF_LOG_LEVEL=info
     ports:
       - "3001:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
-      - GF_DATABASE_TYPE=postgres
-      - GF_DATABASE_HOST=postgres:5432
-      - GF_DATABASE_NAME=grafana
-      - GF_DATABASE_USER=devsecops
-      - GF_DATABASE_PASSWORD=devsecops123
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
     depends_on:
-      - postgres
       - monitoring-agent
-    restart: unless-stopped
     networks:
       - devsecops-network
+    restart: unless-stopped
+
+  # Nginx comme proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/certs:/etc/nginx/certs
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - devsecops-dashboard
+      - sonarqube
+      - grafana
+    networks:
+      - devsecops-network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
-  redis_data:
-  dashboard_logs:
-  dashboard_data:
+    driver: local
+  postgres_sonar_data:
+    driver: local
   sonarqube_data:
+    driver: local
   sonarqube_logs:
+    driver: local
   sonarqube_extensions:
+    driver: local
+  redis_data:
+    driver: local
   prometheus_data:
+    driver: local
   grafana_data:
+    driver: local
+  nginx_logs:
+    driver: local
 
 networks:
   devsecops-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

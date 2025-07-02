@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Dashboard DevSecOps principal
+  devsecops-dashboard:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: devsecops-dashboard
+    ports:
+      - "5001:5000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://devsecops:devsecops123@postgres:5432/devsecops_db
+      - SESSION_SECRET=changeme-session-secret
+      - WEBHOOK_SECRET=changeme-webhook-secret
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - devsecops-network
+    restart: unless-stopped
+
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    environment:
+      - POSTGRES_DB=devsecops_db
+      - POSTGRES_USER=devsecops
+      - POSTGRES_PASSWORD=devsecops123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devsecops -d devsecops_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devsecops-network
+    restart: unless-stopped
+
+  # Nginx comme proxy
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - devsecops-dashboard
+    networks:
+      - devsecops-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  devsecops-network:
+    driver: bridge
