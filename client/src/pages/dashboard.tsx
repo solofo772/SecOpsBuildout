@@ -11,6 +11,7 @@ import { GitHubPipeline } from "@/components/github-pipeline";
 import { GitHubSecurity } from "@/components/github-security";
 import { GitLabPipeline } from "@/components/gitlab-pipeline";
 import { GitLabSecurity } from "@/components/gitlab-security";
+import { BitbucketPipeline } from "@/components/bitbucket-pipeline";
 import { SettingsPage } from "@/pages/settings";
 import { Button } from "@/components/ui/button";
 import { Play, User, Settings } from "lucide-react";
@@ -31,6 +32,10 @@ export default function Dashboard() {
 
   const { data: gitlabConfig } = useQuery<{ configured: boolean; namespace?: string; repo?: string }>({
     queryKey: ["/api/gitlab/config"],
+  });
+
+  const { data: bitbucketConfig } = useQuery<{ configured: boolean; workspace?: string; repo?: string }>({
+    queryKey: ["/api/bitbucket/config"],
   });
 
   const startPipelineMutation = useMutation({
@@ -61,6 +66,7 @@ export default function Dashboard() {
             <MetricsGrid />
             {githubConfig?.configured ? <GitHubPipeline /> :
              gitlabConfig?.configured ? <GitLabPipeline /> :
+             bitbucketConfig?.configured ? <BitbucketPipeline /> :
              <PipelineVisualization />}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {githubConfig?.configured ? <GitHubSecurity /> :
@@ -77,8 +83,9 @@ export default function Dashboard() {
           <>
             {githubConfig?.configured ? <GitHubPipeline /> :
              gitlabConfig?.configured ? <GitLabPipeline /> :
+             bitbucketConfig?.configured ? <BitbucketPipeline /> :
              <PipelineVisualization />}
-            {!githubConfig?.configured && !gitlabConfig?.configured && (
+            {!githubConfig?.configured && !gitlabConfig?.configured && !bitbucketConfig?.configured && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 mt-4">
                 <h3 className="text-lg font-semibold text-orange-800 mb-2">Connecte ton dépôt Git</h3>
                 <p className="text-orange-700 text-sm">
@@ -98,7 +105,7 @@ export default function Dashboard() {
             {githubConfig?.configured ? <GitHubSecurity /> :
              gitlabConfig?.configured ? <GitLabSecurity /> :
              <SecurityDashboard />}
-            {!githubConfig?.configured && !gitlabConfig?.configured && (
+            {!githubConfig?.configured && !gitlabConfig?.configured && !bitbucketConfig?.configured && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 mt-4">
                 <h3 className="text-lg font-semibold text-orange-800 mb-2">Active les alertes de sécurité réelles</h3>
                 <p className="text-orange-700 text-sm">

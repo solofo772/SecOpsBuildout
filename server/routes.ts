@@ -28,6 +28,14 @@ import {
   fetchGitLabVulnerabilities,
   fetchGitLabRepoInfo,
 } from "./gitlab";
+import {
+  setBitbucketConfig,
+  getBitbucketConfig,
+  clearBitbucketConfig,
+  fetchBitbucketPipelines,
+  fetchBitbucketRepoInfo,
+  fetchBitbucketSecurityReports,
+} from "./bitbucket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // === MÉTRIQUES DU TABLEAU DE BORD ===
@@ -516,6 +524,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const info = await fetchGitLabRepoInfo(config);
       res.json(info);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // === INTÉGRATION BITBUCKET ===
+
+  app.get("/api/bitbucket/config", (req, res) => {
+    const config = getBitbucketConfig();
+    if (!config) return res.json({ configured: false });
+    res.json({ configured: true, workspace: config.workspace, repo: config.repo });
+  });
+
+  app.post("/api/bitbucket/config", (req, res) => {
+    const { workspace, repo, username, appPassword } = req.body;
+    if (!workspace || !repo || !username || !appPassword) {
+      return res.status(400).json({ error: "workspace, repo, username et appPassword sont requis" });
+    }
+    setBitbucketConfig({ workspace, repo, username, appPassword });
+    res.json({ success: true, workspace, repo });
+  });
+
+  app.delete("/api/bitbucket/config", (req, res) => {
+    clearBitbucketConfig();
+    res.json({ success: true });
+  });
+
+  app.get("/api/bitbucket/pipelines", async (req, res) => {
+    const config = getBitbucketConfig();
+    if (!config) return res.status(400).json({ error: "Bitbucket non configuré" });
+    try {
+      const pipelines = await fetchBitbucketPipelines(config);
+      res.json(pipelines);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/bitbucket/repo", async (req, res) => {
+    const config = getBitbucketConfig();
+    if (!config) return res.status(400).json({ error: "Bitbucket non configuré" });
+    try {
+      const info = await fetchBitbucketRepoInfo(config);
+      res.json(info);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/bitbucket/security", async (req, res) => {
+    const config = getBitbucketConfig();
+    if (!config) return res.status(400).json({ error: "Bitbucket non configuré" });
+    try {
+      const reports = await fetchBitbucketSecurityReports(config);
+      res.json(reports);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

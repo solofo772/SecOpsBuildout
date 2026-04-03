@@ -7,8 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Github, Shield, CheckCircle, XCircle, Loader2, Search, AlertTriangle, Package } from "lucide-react";
+import { Github, Shield, CheckCircle, XCircle, Loader2, Search, AlertTriangle, Package, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const BitbucketIcon = ({ className }: { className?: string }) => (
+  <svg className={className ?? "h-5 w-5"} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2.043 2a.96.96 0 0 0-.957 1.115l4.338 26.53A1.31 1.31 0 0 0 6.71 30.73l9.29-2.21 9.29 2.21a1.31 1.31 0 0 0 1.286-1.085l4.338-26.53A.96.96 0 0 0 29.957 2zm17.74 19.5h-7.566L10.37 10.5h11.26z" fill="#2684FF"/>
+    <path d="M28.13 10.5H21.63l-1.847 11h-7.566L7.09 28.03a1.306 1.306 0 0 0 .85.7l9.06 2.16 9.06-2.16a1.31 1.31 0 0 0 1-1.1z" fill="url(#bb-grad-s)"/>
+    <defs>
+      <linearGradient id="bb-grad-s" x1="30.5" y1="13.4" x2="18.7" y2="27.4" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#0052CC"/><stop offset="1" stopColor="#2684FF"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
 
 const GitLabIcon = ({ className }: { className?: string }) => (
   <svg className={className ?? "h-5 w-5"} viewBox="0 0 380 380" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -22,7 +34,7 @@ const GitLabIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-type Tab = "github" | "gitlab" | "audit";
+type Tab = "github" | "gitlab" | "bitbucket" | "audit";
 
 export function SettingsPage() {
   const { toast } = useToast();
@@ -40,6 +52,12 @@ export function SettingsPage() {
   const [glToken, setGlToken] = useState("");
   const [glInstanceUrl, setGlInstanceUrl] = useState("https://gitlab.com");
 
+  // Bitbucket state
+  const [bbWorkspace, setBbWorkspace] = useState("");
+  const [bbRepo, setBbRepo] = useState("");
+  const [bbUsername, setBbUsername] = useState("");
+  const [bbAppPassword, setBbAppPassword] = useState("");
+
   // npm audit state
   const [packageJsonContent, setPackageJsonContent] = useState("");
   const [auditResult, setAuditResult] = useState<any>(null);
@@ -50,6 +68,10 @@ export function SettingsPage() {
 
   const { data: gitlabConfig } = useQuery<{ configured: boolean; namespace?: string; repo?: string; instanceUrl?: string }>({
     queryKey: ["/api/gitlab/config"],
+  });
+
+  const { data: bitbucketConfig } = useQuery<{ configured: boolean; workspace?: string; repo?: string }>({
+    queryKey: ["/api/bitbucket/config"],
   });
 
   // === GitHub mutations ===
@@ -119,6 +141,37 @@ export function SettingsPage() {
     },
   });
 
+  // === Bitbucket mutations ===
+  const bitbucketSaveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/bitbucket/config", {
+        workspace: bbWorkspace, repo: bbRepo, username: bbUsername, appPassword: bbAppPassword,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bitbucket/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bitbucket/pipelines"] });
+      setBbAppPassword("");
+      toast({ title: "Bitbucket connecté", description: `Dépôt ${bbWorkspace}/${bbRepo} configuré avec succès.` });
+    },
+    onError: (err: any) => {
+      toast({ title: "Erreur", description: err.message || "Impossible de sauvegarder.", variant: "destructive" });
+    },
+  });
+
+  const bitbucketDisconnectMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/bitbucket/config");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bitbucket/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bitbucket/pipelines"] });
+      toast({ title: "Déconnecté de Bitbucket" });
+    },
+  });
+
   // === npm audit mutation ===
   const auditMutation = useMutation({
     mutationFn: async () => {
@@ -152,6 +205,12 @@ export function SettingsPage() {
       label: "GitLab",
       icon: <GitLabIcon className="h-4 w-4" />,
       badge: gitlabConfig?.configured ? <span className="w-2 h-2 bg-green-400 rounded-full" /> : undefined,
+    },
+    {
+      id: "bitbucket",
+      label: "Bitbucket",
+      icon: <BitbucketIcon className="h-4 w-4" />,
+      badge: bitbucketConfig?.configured ? <span className="w-2 h-2 bg-green-400 rounded-full" /> : undefined,
     },
     {
       id: "audit",
@@ -331,6 +390,81 @@ export function SettingsPage() {
                 >
                   {gitlabSaveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GitLabIcon className="h-4 w-4 mr-2" />}
                   {gitlabSaveMutation.isPending ? "Connexion..." : "Connecter GitLab"}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* === Onglet Bitbucket === */}
+      {activeTab === "bitbucket" && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                <BitbucketIcon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Connexion Bitbucket</h2>
+                <p className="text-sm text-gray-500">Connecte ta plateforme à ton dépôt Bitbucket Cloud</p>
+              </div>
+            </div>
+
+            {bitbucketConfig?.configured ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-800">Connecté à Bitbucket</p>
+                    <p className="text-sm text-green-600">Dépôt : <strong>{bitbucketConfig.workspace}/{bitbucketConfig.repo}</strong></p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => bitbucketDisconnectMutation.mutate()}
+                  disabled={bitbucketDisconnectMutation.isPending}
+                  className="text-red-600 border-red-300 hover:bg-red-50"
+                >
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Déconnecter Bitbucket
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="bb-workspace">Workspace</Label>
+                    <Input id="bb-workspace" placeholder="ex: mon-workspace" value={bbWorkspace} onChange={(e) => setBbWorkspace(e.target.value)} className="mt-1" />
+                    <p className="text-xs text-gray-500 mt-1">Le nom du workspace visible dans l'URL Bitbucket</p>
+                  </div>
+                  <div>
+                    <Label htmlFor="bb-repo">Nom du dépôt</Label>
+                    <Input id="bb-repo" placeholder="ex: mon-app-js" value={bbRepo} onChange={(e) => setBbRepo(e.target.value)} className="mt-1" />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="bb-username">Nom d'utilisateur Bitbucket</Label>
+                  <Input id="bb-username" placeholder="ex: john.doe" value={bbUsername} onChange={(e) => setBbUsername(e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <Label htmlFor="bb-app-password">App Password</Label>
+                  <Input id="bb-app-password" type="password" placeholder="xxxxxxxxxxxxxxxxxxxx" value={bbAppPassword} onChange={(e) => setBbAppPassword(e.target.value)} className="mt-1" />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Crée un App Password sur{" "}
+                    <a href="https://bitbucket.org/account/settings/app-passwords/new" target="_blank" rel="noreferrer" className="text-primary underline">
+                      bitbucket.org → App passwords
+                    </a>{" "}
+                    avec les droits <strong>Pipelines: Read</strong> et <strong>Repositories: Read</strong>.
+                  </p>
+                </div>
+                <Button
+                  onClick={() => bitbucketSaveMutation.mutate()}
+                  disabled={bitbucketSaveMutation.isPending || !bbWorkspace || !bbRepo || !bbUsername || !bbAppPassword}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {bitbucketSaveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Key className="mr-2 h-4 w-4" />}
+                  {bitbucketSaveMutation.isPending ? "Connexion..." : "Connecter Bitbucket"}
                 </Button>
               </div>
             )}

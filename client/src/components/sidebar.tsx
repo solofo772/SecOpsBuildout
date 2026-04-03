@@ -28,6 +28,10 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
     queryKey: ["/api/gitlab/config"],
   });
 
+  const { data: bitbucketConfig } = useQuery<{ configured: boolean; workspace?: string; repo?: string }>({
+    queryKey: ["/api/bitbucket/config"],
+  });
+
   return (
     <div className="w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col">
       <div className="p-6">
@@ -39,13 +43,16 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         </div>
       </div>
 
-      {(githubConfig?.configured || gitlabConfig?.configured) && (
+      {(githubConfig?.configured || gitlabConfig?.configured || bitbucketConfig?.configured) && (
         <div className="mx-4 px-3 py-2 bg-green-900/40 border border-green-700/50 rounded-lg mb-2 space-y-1">
           {githubConfig?.configured && (
             <p className="text-xs text-green-400 font-medium">● GitHub : {githubConfig.owner}/{githubConfig.repo}</p>
           )}
           {gitlabConfig?.configured && (
             <p className="text-xs text-green-400 font-medium">● GitLab : {gitlabConfig.namespace}/{gitlabConfig.repo}</p>
+          )}
+          {bitbucketConfig?.configured && (
+            <p className="text-xs text-green-400 font-medium">● Bitbucket : {bitbucketConfig.workspace}/{bitbucketConfig.repo}</p>
           )}
         </div>
       )}
@@ -85,7 +92,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         >
           <Settings className="mr-3 h-4 w-4" />
           Paramètres
-          {!githubConfig?.configured && !gitlabConfig?.configured && (
+          {!githubConfig?.configured && !gitlabConfig?.configured && !bitbucketConfig?.configured && (
             <span className="ml-auto w-2 h-2 bg-orange-400 rounded-full" title="Aucune connexion Git configurée" />
           )}
         </button>
