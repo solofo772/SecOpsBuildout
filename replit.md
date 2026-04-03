@@ -95,6 +95,16 @@ This is a full-stack DevSecOps dashboard application built with a modern React f
 
 Preferred communication style: Simple, everyday language (French).
 
+## GitHub Integration
+
+The platform now supports real GitHub integration with:
+- **Settings page**: Configure GitHub owner, repo, and Personal Access Token
+- **GitHub Actions pipeline**: Real workflow runs via `/api/github/workflows`
+- **Dependabot alerts**: Real security vulnerabilities via `/api/github/security`
+- **npm audit**: Paste `package.json` to scan packages against OSV.dev advisory database
+- **Repository info**: Fetch repo stats via `/api/github/repo`
+- Server-side GitHub proxy in `server/github.ts`
+
 ## Changelog
 
 Changelog:

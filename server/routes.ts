@@ -11,6 +11,15 @@ import {
   insertDeploymentSchema,
   insertComplianceCheckSchema
 } from "@shared/schema";
+import {
+  setGitHubConfig,
+  getGitHubConfig,
+  clearGitHubConfig,
+  fetchWorkflowRuns,
+  fetchDependabotAlerts,
+  fetchRepoInfo,
+  analyzePackageJson,
+} from "./github";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // === MÉTRIQUES DU TABLEAU DE BORD ===
@@ -353,6 +362,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(metrics);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch code metrics" });
+    }
+  });
+
+  // === INTÉGRATION GITHUB ===
+
+  // Obtenir la configuration GitHub actuelle
+  app.get("/api/github/config", (req, res) => {
+    const config = getGitHubConfig();
+    if (!config) {
+      return res.json({ configured: false });
+    }
+    res.json({ configured: true, owner: config.owner, repo: config.repo });
+  });
+
+  // Enregistrer la configuration GitHub
+  app.post("/api/github/config", (req, res) => {
+    const { owner, repo, token } = req.body;
+    if (!owner || !repo || !token) {
+      return res.status(400).json({ error: "owner, repo et token sont requis" });
+    }
+    setGitHubConfig({ owner, repo, token });
+    res.json({ success: true, owner, repo });
+  });
+
+  // Supprimer la configuration GitHub
+  app.delete("/api/github/config", (req, res) => {
+    clearGitHubConfig();
+    res.json({ success: true });
+  });
+
+  // Obtenir les exécutions GitHub Actions
+  app.get("/api/github/workflows", async (req, res) => {
+    const config = getGitHubConfig();
+    if (!config) return res.status(400).json({ error: "GitHub non configuré" });
+    try {
+      const runs = await fetchWorkflowRuns(config);
+      res.json(runs);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Obtenir les alertes Dependabot
+  app.get("/api/github/security", async (req, res) => {
+    const config = getGitHubConfig();
+    if (!config) return res.status(400).json({ error: "GitHub non configuré" });
+    try {
+      const alerts = await fetchDependabotAlerts(config);
+      res.json(alerts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Obtenir les informations du dépôt
+  app.get("/api/github/repo", async (req, res) => {
+    const config = getGitHubConfig();
+    if (!config) return res.status(400).json({ error: "GitHub non configuré" });
+    try {
+      const info = await fetchRepoInfo(config);
+      res.json(info);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Analyser un package.json pour les vulnérabilités
+  app.post("/api/github/npm-audit", async (req, res) => {
+    const { packageJson } = req.body;
+    if (!packageJson) {
+      return res.status(400).json({ error: "Contenu du package.json requis" });
+    }
+    try {
+      const result = await analyzePackageJson(packageJson);
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 

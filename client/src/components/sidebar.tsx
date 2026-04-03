@@ -1,7 +1,8 @@
-import { Shield, BarChart3, GitBranch, Lock, ChartLine, ClipboardCheck, Book, Network } from "lucide-react";
+import { Shield, BarChart3, GitBranch, Lock, ChartLine, ClipboardCheck, Book, Network, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
-type ActiveSection = 'dashboard' | 'pipeline' | 'security' | 'quality' | 'compliance' | 'docs' | 'architecture';
+type ActiveSection = 'dashboard' | 'pipeline' | 'security' | 'quality' | 'compliance' | 'docs' | 'architecture' | 'settings';
 
 interface SidebarProps {
   activeSection: ActiveSection;
@@ -19,8 +20,12 @@ const navigationItems = [
 ] as const;
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+  const { data: config } = useQuery<{ configured: boolean }>({
+    queryKey: ["/api/github/config"],
+  });
+
   return (
-    <div className="w-64 bg-gray-900 text-white flex-shrink-0">
+    <div className="w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col">
       <div className="p-6">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -29,8 +34,14 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
           <h1 className="text-xl font-bold">DevSecOps Hub</h1>
         </div>
       </div>
+
+      {config?.configured && (
+        <div className="mx-4 px-3 py-2 bg-green-900/40 border border-green-700/50 rounded-lg mb-2">
+          <p className="text-xs text-green-400 font-medium">● GitHub connecté</p>
+        </div>
+      )}
       
-      <nav className="mt-8">
+      <nav className="mt-2 flex-1">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
@@ -52,6 +63,24 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
           );
         })}
       </nav>
+
+      <div className="border-t border-gray-700 mt-2">
+        <button
+          onClick={() => onSectionChange('settings')}
+          className={cn(
+            "w-full flex items-center px-6 py-4 text-left transition-colors",
+            activeSection === 'settings'
+              ? "bg-primary/20 border-r-4 border-primary text-primary font-medium"
+              : "text-gray-300 hover:bg-gray-800 hover:text-white"
+          )}
+        >
+          <Settings className="mr-3 h-4 w-4" />
+          Paramètres
+          {!config?.configured && (
+            <span className="ml-auto w-2 h-2 bg-orange-400 rounded-full" title="GitHub non configuré" />
+          )}
+        </button>
+      </div>
     </div>
   );
 }
