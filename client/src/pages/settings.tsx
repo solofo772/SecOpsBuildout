@@ -23,8 +23,10 @@ export function SettingsPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: () =>
-      apiRequest("POST", "/api/github/config", { owner, repo, token }),
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/github/config", { owner, repo, token });
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/github/config"] });
       queryClient.invalidateQueries({ queryKey: ["/api/github/workflows"] });
@@ -46,7 +48,10 @@ export function SettingsPage() {
   });
 
   const disconnectMutation = useMutation({
-    mutationFn: () => apiRequest("DELETE", "/api/github/config"),
+    mutationFn: async () => {
+      const res = await apiRequest("DELETE", "/api/github/config");
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/github/config"] });
       queryClient.invalidateQueries({ queryKey: ["/api/github/workflows"] });
@@ -57,8 +62,10 @@ export function SettingsPage() {
   });
 
   const auditMutation = useMutation({
-    mutationFn: () =>
-      apiRequest("POST", "/api/github/npm-audit", { packageJson: packageJsonContent }),
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/github/npm-audit", { packageJson: packageJsonContent });
+      return res.json();
+    },
     onSuccess: (data: any) => {
       setAuditResult(data);
     },
@@ -228,19 +235,19 @@ export function SettingsPage() {
                   <div className="flex items-center space-x-3">
                     <Package className="h-5 w-5 text-gray-600" />
                     <span className="font-medium text-gray-700">
-                      {auditResult.totalPackages} packages analysés
+                      {auditResult.totalPackages ?? 0} packages analysés
                     </span>
                   </div>
                   <span
                     className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      auditResult.vulnerabilities?.length === 0
+                      (auditResult.vulnerabilities?.length ?? 0) === 0
                         ? "bg-green-100 text-green-700"
                         : "bg-red-100 text-red-700"
                     }`}
                   >
-                    {auditResult.vulnerabilities?.length === 0
+                    {(auditResult.vulnerabilities?.length ?? 0) === 0
                       ? "Aucune vulnérabilité"
-                      : `${auditResult.vulnerabilities?.length} vulnérabilité(s) trouvée(s)`}
+                      : `${auditResult.vulnerabilities.length} vulnérabilité(s) trouvée(s)`}
                   </span>
                 </div>
 
