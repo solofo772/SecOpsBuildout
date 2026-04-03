@@ -1,4 +1,4 @@
-import { Shield, BarChart3, GitBranch, Lock, ChartLine, ClipboardCheck, Book, Network, Settings } from "lucide-react";
+import { Shield, BarChart3, GitBranch, Lock, ChartLine, ClipboardCheck, Book, Network, Settings, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 
