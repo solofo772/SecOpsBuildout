@@ -20,8 +20,12 @@ const navigationItems = [
 ] as const;
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
-  const { data: config } = useQuery<{ configured: boolean }>({
+  const { data: githubConfig } = useQuery<{ configured: boolean; owner?: string; repo?: string }>({
     queryKey: ["/api/github/config"],
+  });
+
+  const { data: gitlabConfig } = useQuery<{ configured: boolean; namespace?: string; repo?: string }>({
+    queryKey: ["/api/gitlab/config"],
   });
 
   return (
@@ -35,9 +39,14 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         </div>
       </div>
 
-      {config?.configured && (
-        <div className="mx-4 px-3 py-2 bg-green-900/40 border border-green-700/50 rounded-lg mb-2">
-          <p className="text-xs text-green-400 font-medium">● GitHub connecté</p>
+      {(githubConfig?.configured || gitlabConfig?.configured) && (
+        <div className="mx-4 px-3 py-2 bg-green-900/40 border border-green-700/50 rounded-lg mb-2 space-y-1">
+          {githubConfig?.configured && (
+            <p className="text-xs text-green-400 font-medium">● GitHub : {githubConfig.owner}/{githubConfig.repo}</p>
+          )}
+          {gitlabConfig?.configured && (
+            <p className="text-xs text-green-400 font-medium">● GitLab : {gitlabConfig.namespace}/{gitlabConfig.repo}</p>
+          )}
         </div>
       )}
       
@@ -76,8 +85,8 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         >
           <Settings className="mr-3 h-4 w-4" />
           Paramètres
-          {!config?.configured && (
-            <span className="ml-auto w-2 h-2 bg-orange-400 rounded-full" title="GitHub non configuré" />
+          {!githubConfig?.configured && !gitlabConfig?.configured && (
+            <span className="ml-auto w-2 h-2 bg-orange-400 rounded-full" title="Aucune connexion Git configurée" />
           )}
         </button>
       </div>

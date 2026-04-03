@@ -9,6 +9,8 @@ import { BestPractices } from "@/components/best-practices";
 import { ComplianceDashboard } from "@/components/compliance-dashboard";
 import { GitHubPipeline } from "@/components/github-pipeline";
 import { GitHubSecurity } from "@/components/github-security";
+import { GitLabPipeline } from "@/components/gitlab-pipeline";
+import { GitLabSecurity } from "@/components/gitlab-security";
 import { SettingsPage } from "@/pages/settings";
 import { Button } from "@/components/ui/button";
 import { Play, User, Settings } from "lucide-react";
@@ -25,6 +27,10 @@ export default function Dashboard() {
 
   const { data: githubConfig } = useQuery<{ configured: boolean; owner?: string; repo?: string }>({
     queryKey: ["/api/github/config"],
+  });
+
+  const { data: gitlabConfig } = useQuery<{ configured: boolean; namespace?: string; repo?: string }>({
+    queryKey: ["/api/gitlab/config"],
   });
 
   const startPipelineMutation = useMutation({
@@ -53,13 +59,13 @@ export default function Dashboard() {
         return (
           <>
             <MetricsGrid />
-            {githubConfig?.configured ? (
-              <GitHubPipeline />
-            ) : (
-              <PipelineVisualization />
-            )}
+            {githubConfig?.configured ? <GitHubPipeline /> :
+             gitlabConfig?.configured ? <GitLabPipeline /> :
+             <PipelineVisualization />}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {githubConfig?.configured ? <GitHubSecurity /> : <SecurityDashboard />}
+              {githubConfig?.configured ? <GitHubSecurity /> :
+               gitlabConfig?.configured ? <GitLabSecurity /> :
+               <SecurityDashboard />}
               <QualityMetrics />
             </div>
             <ArchitectureDiagram />
@@ -69,23 +75,18 @@ export default function Dashboard() {
       case 'pipeline':
         return (
           <>
-            {githubConfig?.configured ? (
-              <GitHubPipeline />
-            ) : (
-              <PipelineVisualization />
-            )}
-            {!githubConfig?.configured && (
+            {githubConfig?.configured ? <GitHubPipeline /> :
+             gitlabConfig?.configured ? <GitLabPipeline /> :
+             <PipelineVisualization />}
+            {!githubConfig?.configured && !gitlabConfig?.configured && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 mt-4">
-                <h3 className="text-lg font-semibold text-orange-800 mb-2">Connecte ton dépôt GitHub</h3>
+                <h3 className="text-lg font-semibold text-orange-800 mb-2">Connecte ton dépôt Git</h3>
                 <p className="text-orange-700 text-sm">
-                  Pour voir tes vrais pipelines GitHub Actions, va dans{" "}
-                  <button
-                    onClick={() => setActiveSection("settings")}
-                    className="font-bold underline"
-                  >
+                  Pour voir tes vrais pipelines, va dans{" "}
+                  <button onClick={() => setActiveSection("settings")} className="font-bold underline">
                     Paramètres
                   </button>{" "}
-                  et configure ton dépôt.
+                  et connecte GitHub ou GitLab.
                 </p>
               </div>
             )}
@@ -94,34 +95,29 @@ export default function Dashboard() {
       case 'security':
         return (
           <>
-            {githubConfig?.configured ? <GitHubSecurity /> : <SecurityDashboard />}
-            {!githubConfig?.configured && (
+            {githubConfig?.configured ? <GitHubSecurity /> :
+             gitlabConfig?.configured ? <GitLabSecurity /> :
+             <SecurityDashboard />}
+            {!githubConfig?.configured && !gitlabConfig?.configured && (
               <div className="bg-orange-50 border border-orange-200 rounded-xl p-6 mt-4">
-                <h3 className="text-lg font-semibold text-orange-800 mb-2">Active les alertes Dependabot réelles</h3>
+                <h3 className="text-lg font-semibold text-orange-800 mb-2">Active les alertes de sécurité réelles</h3>
                 <p className="text-orange-700 text-sm">
                   Va dans{" "}
-                  <button
-                    onClick={() => setActiveSection("settings")}
-                    className="font-bold underline"
-                  >
+                  <button onClick={() => setActiveSection("settings")} className="font-bold underline">
                     Paramètres
                   </button>{" "}
-                  pour connecter GitHub et voir les vraies vulnérabilités de ton projet.
+                  pour connecter GitHub ou GitLab et voir les vraies vulnérabilités.
                 </p>
               </div>
             )}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mt-4">
               <h3 className="text-xl font-bold text-gray-900 mb-2">Analyse npm audit</h3>
               <p className="text-gray-600 text-sm">
-                Tu peux aussi analyser directement ton{" "}
+                Analyse directement ton{" "}
                 <code className="bg-gray-100 px-1 rounded">package.json</code> dans{" "}
-                <button
-                  onClick={() => setActiveSection("settings")}
-                  className="text-primary font-medium underline"
-                >
-                  Paramètres → Analyse de Sécurité
-                </button>
-                .
+                <button onClick={() => setActiveSection("settings")} className="text-primary font-medium underline">
+                  Paramètres → Analyse npm
+                </button>.
               </p>
             </div>
           </>

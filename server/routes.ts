@@ -20,6 +20,14 @@ import {
   fetchRepoInfo,
   analyzePackageJson,
 } from "./github";
+import {
+  setGitLabConfig,
+  getGitLabConfig,
+  clearGitLabConfig,
+  fetchGitLabPipelines,
+  fetchGitLabVulnerabilities,
+  fetchGitLabRepoInfo,
+} from "./gitlab";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // === MÉTRIQUES DU TABLEAU DE BORD ===
@@ -439,6 +447,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  });
+
+  // === INTÉGRATION GITLAB ===
+
+  // Obtenir la configuration GitLab actuelle
+  app.get("/api/gitlab/config", (req, res) => {
+    const config = getGitLabConfig();
+    if (!config) return res.json({ configured: false });
+    res.json({
+      configured: true,
+      namespace: config.namespace,
+      repo: config.repo,
+      instanceUrl: config.instanceUrl,
+    });
+  });
+
+  // Enregistrer la configuration GitLab
+  app.post("/api/gitlab/config", (req, res) => {
+    const { namespace, repo, token, instanceUrl } = req.body;
+    if (!namespace || !repo || !token) {
+      return res.status(400).json({ error: "namespace, repo et token sont requis" });
+    }
+    setGitLabConfig({
+      namespace,
+      repo,
+      token,
+      instanceUrl: instanceUrl || "https://gitlab.com",
+    });
+    res.json({ success: true, namespace, repo });
+  });
+
+  // Supprimer la configuration GitLab
+  app.delete("/api/gitlab/config", (req, res) => {
+    clearGitLabConfig();
+    res.json({ success: true });
+  });
+
+  // Obtenir les pipelines GitLab CI/CD
+  app.get("/api/gitlab/pipelines", async (req, res) => {
+    const config = getGitLabConfig();
+    if (!config) return res.status(400).json({ error: "GitLab non configuré" });
+    try {
+      const pipelines = await fetchGitLabPipelines(config);
+      res.json(pipelines);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Obtenir les vulnérabilités GitLab
+  app.get("/api/gitlab/security", async (req, res) => {
+    const config = getGitLabConfig();
+    if (!config) return res.status(400).json({ error: "GitLab non configuré" });
+    try {
+      const vulns = await fetchGitLabVulnerabilities(config);
+      res.json(vulns);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Obtenir les informations du projet GitLab
+  app.get("/api/gitlab/repo", async (req, res) => {
+    const config = getGitLabConfig();
+    if (!config) return res.status(400).json({ error: "GitLab non configuré" });
+    try {
+      const info = await fetchGitLabRepoInfo(config);
+      res.json(info);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
