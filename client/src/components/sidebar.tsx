@@ -1,6 +1,7 @@
-import { Shield, BarChart3, GitBranch, Lock, ChartLine, ClipboardCheck, Book, Network, Settings, LogIn } from "lucide-react";
+import { Shield, BarChart3, GitBranch, Lock, ChartLine, ClipboardCheck, Book, Network, Settings, LogIn, LogOut, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 type ActiveSection = 'dashboard' | 'pipeline' | 'security' | 'quality' | 'compliance' | 'docs' | 'architecture' | 'settings';
 
@@ -20,6 +21,8 @@ const navigationItems = [
 ] as const;
 
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+  const { user, logout } = useAuth();
+
   const { data: githubConfig } = useQuery<{ configured: boolean; owner?: string; repo?: string }>({
     queryKey: ["/api/github/config"],
   });
@@ -87,7 +90,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
 
       {/* Bottom actions — always visible */}
       <div className="border-t border-gray-700 flex-shrink-0">
-        {/* Connexion button — only when nothing is connected */}
+        {/* Connexion Git button — only when nothing is connected */}
         {!anyConnected && (
           <button
             onClick={() => onSectionChange('settings')}
@@ -103,7 +106,7 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         <button
           onClick={() => onSectionChange('settings')}
           className={cn(
-            "w-full flex items-center px-6 py-4 text-left transition-colors",
+            "w-full flex items-center px-6 py-3 text-left transition-colors",
             activeSection === 'settings'
               ? "bg-primary/20 border-r-4 border-primary text-primary font-medium"
               : "text-gray-300 hover:bg-gray-800 hover:text-white"
@@ -112,6 +115,26 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
           <Settings className="mr-3 h-4 w-4" />
           Paramètres
         </button>
+
+        {/* User info + logout */}
+        {user && (
+          <div className="mx-3 mb-3 mt-1 p-3 bg-gray-800 rounded-lg flex items-center space-x-2">
+            <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <User className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user.username}</p>
+              <p className="text-xs text-gray-400 truncate">{user.role}</p>
+            </div>
+            <button
+              onClick={() => logout()}
+              title="Se déconnecter"
+              className="text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

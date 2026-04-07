@@ -14,7 +14,7 @@ import { GitLabSecurity } from "@/components/gitlab-security";
 import { BitbucketPipeline } from "@/components/bitbucket-pipeline";
 import { SettingsPage } from "@/pages/settings";
 import { Button } from "@/components/ui/button";
-import { Play, User, Settings } from "lucide-react";
+import { Play, Settings } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -216,9 +216,6 @@ export default function Dashboard() {
               >
                 <Settings className="h-4 w-4 text-gray-600" />
               </button>
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 text-gray-600" />
-              </div>
             </div>
           </div>
         </header>

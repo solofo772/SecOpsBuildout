@@ -1,6 +1,29 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
 import { storage } from "./storage";
+
+const scryptAsync = promisify(scrypt);
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  const [hashed, salt] = stored.split(".");
+  const buf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(Buffer.from(hashed, "hex"), buf);
+}
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!(req.session as any).userId) {
+    return res.status(401).json({ message: "Non authentifié" });
+  }
+  next();
+}
 import { 
   insertPipelineRunSchema, 
   insertSecurityIssueSchema, 
@@ -38,6 +61,70 @@ import {
 } from "./bitbucket";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // === AUTHENTIFICATION ===
+
+  // Inscription
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const { username, email, password } = req.body;
+      if (!username || !email || !password) {
+        return res.status(400).json({ message: "Tous les champs sont obligatoires." });
+      }
+      const existing = await storage.getUserByUsername(username);
+      if (existing) {
+        return res.status(409).json({ message: "Ce nom d'utilisateur est déjà pris." });
+      }
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(409).json({ message: "Cet email est déjà utilisé." });
+      }
+      const hashed = await hashPassword(password);
+      const user = await storage.createUser({ username, email, password: hashed, role: "developer" });
+      (req.session as any).userId = user.id;
+      res.status(201).json({ id: user.id, username: user.username, email: user.email, role: user.role });
+    } catch (error) {
+      res.status(500).json({ message: "Erreur serveur lors de l'inscription." });
+    }
+  });
+
+  // Connexion
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ message: "Identifiant et mot de passe requis." });
+      }
+      const user = await storage.getUserByUsername(username);
+      if (!user || !(await comparePasswords(password, user.password))) {
+        return res.status(401).json({ message: "Identifiant ou mot de passe incorrect." });
+      }
+      (req.session as any).userId = user.id;
+      res.json({ id: user.id, username: user.username, email: user.email, role: user.role });
+    } catch (error) {
+      res.status(500).json({ message: "Erreur serveur lors de la connexion." });
+    }
+  });
+
+  // Déconnexion
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy(() => {
+      res.json({ message: "Déconnecté avec succès." });
+    });
+  });
+
+  // Utilisateur actuel
+  app.get("/api/auth/me", async (req, res) => {
+    const userId = (req.session as any).userId;
+    if (!userId) {
+      return res.status(401).json({ message: "Non authentifié" });
+    }
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(401).json({ message: "Utilisateur introuvable" });
+    }
+    res.json({ id: user.id, username: user.username, email: user.email, role: user.role });
+  });
+
   // === MÉTRIQUES DU TABLEAU DE BORD ===
   
   // Obtenir les métriques globales du tableau de bord
