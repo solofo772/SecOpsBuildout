@@ -32,9 +32,12 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
     queryKey: ["/api/bitbucket/config"],
   });
 
+  const anyConnected = githubConfig?.configured || gitlabConfig?.configured || bitbucketConfig?.configured;
+
   return (
-    <div className="w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col">
-      <div className="p-6">
+    <div className="w-64 bg-gray-900 text-white flex-shrink-0 flex flex-col h-full">
+      {/* Logo */}
+      <div className="p-6 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <Shield className="h-4 w-4 text-white" />
@@ -43,8 +46,9 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         </div>
       </div>
 
-      {(githubConfig?.configured || gitlabConfig?.configured || bitbucketConfig?.configured) && (
-        <div className="mx-4 px-3 py-2 bg-green-900/40 border border-green-700/50 rounded-lg mb-2 space-y-1">
+      {/* Connexion status badge */}
+      {anyConnected && (
+        <div className="mx-4 px-3 py-2 bg-green-900/40 border border-green-700/50 rounded-lg mb-2 space-y-1 flex-shrink-0">
           {githubConfig?.configured && (
             <p className="text-xs text-green-400 font-medium">● GitHub : {githubConfig.owner}/{githubConfig.repo}</p>
           )}
@@ -56,12 +60,13 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
           )}
         </div>
       )}
-      
-      <nav className="mt-2 flex-1">
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto mt-2">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeSection === item.id;
-          
+
           return (
             <button
               key={item.id}
@@ -80,7 +85,21 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-gray-700 mt-2">
+      {/* Bottom actions — always visible */}
+      <div className="border-t border-gray-700 flex-shrink-0">
+        {/* Connexion button — only when nothing is connected */}
+        {!anyConnected && (
+          <button
+            onClick={() => onSectionChange('settings')}
+            className="w-full flex items-center px-6 py-3 text-left transition-colors text-orange-300 hover:bg-gray-800 hover:text-orange-200"
+          >
+            <LogIn className="mr-3 h-4 w-4" />
+            Connexion Git
+            <span className="ml-auto w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
+          </button>
+        )}
+
+        {/* Settings button */}
         <button
           onClick={() => onSectionChange('settings')}
           className={cn(
@@ -92,9 +111,6 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         >
           <Settings className="mr-3 h-4 w-4" />
           Paramètres
-          {!githubConfig?.configured && !gitlabConfig?.configured && !bitbucketConfig?.configured && (
-            <span className="ml-auto w-2 h-2 bg-orange-400 rounded-full" title="Aucune connexion Git configurée" />
-          )}
         </button>
       </div>
     </div>
