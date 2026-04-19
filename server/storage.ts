@@ -382,6 +382,7 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
+      role: insertUser.role ?? "developer",
       createdAt: new Date()
     };
     this.users.set(id, user);
@@ -402,6 +403,10 @@ export class MemStorage implements IStorage {
     const run: PipelineRun = { 
       ...insertRun, 
       id,
+      branch: insertRun.branch ?? "main",
+      currentStage: insertRun.currentStage ?? null,
+      commitHash: insertRun.commitHash ?? null,
+      environment: insertRun.environment ?? "staging",
       startTime: new Date(),
       endTime: null,
       duration: null
@@ -428,7 +433,16 @@ export class MemStorage implements IStorage {
 
   async createPipelineStage(insertStage: InsertPipelineStage): Promise<PipelineStage> {
     const id = this.currentId++;
-    const stage: PipelineStage = { ...insertStage, id };
+    const stage: PipelineStage = { 
+      ...insertStage, 
+      id,
+      pipelineRunId: insertStage.pipelineRunId ?? null,
+      startTime: insertStage.startTime ?? null,
+      endTime: insertStage.endTime ?? null,
+      duration: insertStage.duration ?? null,
+      logs: insertStage.logs ?? null,
+      artifactsUrl: insertStage.artifactsUrl ?? null
+    };
     this.pipelineStages.set(id, stage);
     return stage;
   }
@@ -458,7 +472,15 @@ export class MemStorage implements IStorage {
     const issue: SecurityIssue = { 
       ...insertIssue, 
       id,
+      pipelineRunId: insertIssue.pipelineRunId ?? null,
+      line: insertIssue.line ?? null,
+      column: insertIssue.column ?? null,
+      description: insertIssue.description ?? null,
+      recommendation: insertIssue.recommendation ?? null,
+      cweId: insertIssue.cweId ?? null,
+      cvssScore: insertIssue.cvssScore ?? null,
       status: "open",
+      assignedTo: insertIssue.assignedTo ?? null,
       createdAt: new Date(),
       resolvedAt: null
     };
@@ -491,9 +513,20 @@ export class MemStorage implements IStorage {
     const existingMetrics = await this.getCodeMetricsByPipeline(insertMetrics.pipelineRunId!);
     
     if (existingMetrics) {
-      const updatedMetrics = {
+      const updatedMetrics: CodeMetrics = {
         ...existingMetrics,
         ...insertMetrics,
+        pipelineRunId: insertMetrics.pipelineRunId ?? null,
+        coverage: insertMetrics.coverage ?? "0",
+        linesOfCode: insertMetrics.linesOfCode ?? null,
+        cyclomaticComplexity: insertMetrics.cyclomaticComplexity ?? null,
+        maintainabilityIndex: insertMetrics.maintainabilityIndex ?? null,
+        technicalDebt: insertMetrics.technicalDebt ?? null,
+        duplicatedLines: insertMetrics.duplicatedLines ?? null,
+        codeSmells: insertMetrics.codeSmells ?? null,
+        bugs: insertMetrics.bugs ?? null,
+        vulnerabilities: insertMetrics.vulnerabilities ?? null,
+        securityHotspots: insertMetrics.securityHotspots ?? null,
         lastUpdated: new Date()
       };
       this.codeMetrics.set(existingMetrics.id, updatedMetrics);
@@ -502,7 +535,17 @@ export class MemStorage implements IStorage {
       const id = this.currentId++;
       const metrics: CodeMetrics = {
         id,
-        ...insertMetrics,
+        pipelineRunId: insertMetrics.pipelineRunId ?? null,
+        coverage: insertMetrics.coverage ?? "0",
+        linesOfCode: insertMetrics.linesOfCode ?? null,
+        cyclomaticComplexity: insertMetrics.cyclomaticComplexity ?? null,
+        maintainabilityIndex: insertMetrics.maintainabilityIndex ?? null,
+        technicalDebt: insertMetrics.technicalDebt ?? null,
+        duplicatedLines: insertMetrics.duplicatedLines ?? null,
+        codeSmells: insertMetrics.codeSmells ?? null,
+        bugs: insertMetrics.bugs ?? null,
+        vulnerabilities: insertMetrics.vulnerabilities ?? null,
+        securityHotspots: insertMetrics.securityHotspots ?? null,
         lastUpdated: new Date()
       };
       this.codeMetrics.set(id, metrics);
@@ -522,6 +565,10 @@ export class MemStorage implements IStorage {
     const results: TestResults = { 
       ...insertResults, 
       id,
+      pipelineRunId: insertResults.pipelineRunId ?? null,
+      duration: insertResults.duration ?? null,
+      coverage: insertResults.coverage ?? null,
+      reportUrl: insertResults.reportUrl ?? null,
       createdAt: new Date()
     };
     this.testResults.set(id, results);
@@ -544,6 +591,9 @@ export class MemStorage implements IStorage {
     const deployment: Deployment = { 
       ...insertDeployment, 
       id,
+      pipelineRunId: insertDeployment.pipelineRunId ?? null,
+      deploymentUrl: insertDeployment.deploymentUrl ?? null,
+      healthCheckUrl: insertDeployment.healthCheckUrl ?? null,
       startTime: new Date(),
       endTime: null,
       rollbackTime: null
@@ -573,6 +623,11 @@ export class MemStorage implements IStorage {
     const check: ComplianceCheck = { 
       ...insertCheck, 
       id,
+      pipelineRunId: insertCheck.pipelineRunId ?? null,
+      severity: insertCheck.severity ?? null,
+      description: insertCheck.description ?? null,
+      evidence: insertCheck.evidence ?? null,
+      remediation: insertCheck.remediation ?? null,
       createdAt: new Date()
     };
     this.complianceChecks.set(id, check);
@@ -589,12 +644,31 @@ export class MemStorage implements IStorage {
       this.dashboardMetrics = {
         ...this.dashboardMetrics,
         ...insertMetrics,
+        date: insertMetrics.date ?? null,
         lastUpdated: new Date()
       };
     } else {
       this.dashboardMetrics = {
         id: this.currentId++,
-        ...insertMetrics,
+        date: insertMetrics.date ?? null,
+        period: insertMetrics.period ?? "daily",
+        totalPipelines: insertMetrics.totalPipelines ?? 0,
+        successfulPipelines: insertMetrics.successfulPipelines ?? 0,
+        failedPipelines: insertMetrics.failedPipelines ?? 0,
+        averageDuration: insertMetrics.averageDuration ?? null,
+        totalSecurityIssues: insertMetrics.totalSecurityIssues ?? 0,
+        criticalIssues: insertMetrics.criticalIssues ?? 0,
+        highIssues: insertMetrics.highIssues ?? 0,
+        mediumIssues: insertMetrics.mediumIssues ?? 0,
+        lowIssues: insertMetrics.lowIssues ?? 0,
+        resolvedIssues: insertMetrics.resolvedIssues ?? 0,
+        averageCoverage: insertMetrics.averageCoverage ?? "0",
+        averageComplexity: insertMetrics.averageComplexity ?? "0",
+        totalTechnicalDebt: insertMetrics.totalTechnicalDebt ?? "0h",
+        totalDeployments: insertMetrics.totalDeployments ?? 0,
+        successfulDeployments: insertMetrics.successfulDeployments ?? 0,
+        failedDeployments: insertMetrics.failedDeployments ?? 0,
+        averageDeploymentTime: insertMetrics.averageDeploymentTime ?? null,
         lastUpdated: new Date()
       };
     }

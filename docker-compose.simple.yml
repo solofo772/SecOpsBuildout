@@ -10,7 +10,7 @@ services:
     ports:
       - "5001:5000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=developement
       - DATABASE_URL=postgresql://devsecops:devsecops123@postgres:5432/devsecops_db
       - SESSION_SECRET=changeme-session-secret
       - WEBHOOK_SECRET=changeme-webhook-secret

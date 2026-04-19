@@ -2,7 +2,7 @@
 FROM node:18-alpine AS builder
 
 # Variables d'environnement pour le build
-ENV NODE_ENV=production
+ENV NODE_ENV=development  
 ENV CI=true
 
 # Créer un utilisateur non-root pour la sécurité
@@ -20,8 +20,8 @@ COPY components.json ./
 COPY tailwind.config.ts ./
 COPY postcss.config.js ./
 
-# Installer les dépendances
-RUN npm ci --only=production --silent
+# Installer toutes les dépendances (y compris dev)
+RUN npm ci --silent  # Enlevé --only=production
 
 # Copier le code source
 COPY . .
@@ -29,7 +29,7 @@ COPY . .
 # Construire l'application
 RUN npm run build
 
-# Stage de production
+# Stage de production (reste identique)
 FROM node:18-alpine AS production
 
 # Installer curl pour les health checks

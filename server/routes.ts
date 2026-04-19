@@ -2,7 +2,17 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage";
+import { storage } from "./db-storage";
+import {
+  insertPipelineRunSchema,
+  insertSecurityIssueSchema,
+  insertCodeMetricsSchema,
+  insertDashboardMetricsSchema,
+  insertPipelineStageSchema,
+  insertTestResultsSchema,
+  insertDeploymentSchema,
+  insertComplianceCheckSchema,
+} from "@shared/schema";
 
 const scryptAsync = promisify(scrypt);
 
@@ -24,16 +34,6 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
   next();
 }
-import { 
-  insertPipelineRunSchema, 
-  insertSecurityIssueSchema, 
-  insertCodeMetricsSchema, 
-  insertDashboardMetricsSchema,
-  insertPipelineStageSchema,
-  insertTestResultsSchema,
-  insertDeploymentSchema,
-  insertComplianceCheckSchema
-} from "@shared/schema";
 import {
   setGitHubConfig,
   getGitHubConfig,
@@ -82,8 +82,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.createUser({ username, email, password: hashed, role: "developer" });
       (req.session as any).userId = user.id;
       res.status(201).json({ id: user.id, username: user.username, email: user.email, role: user.role });
-    } catch (error) {
-      res.status(500).json({ message: "Erreur serveur lors de l'inscription." });
+    } catch (error: any) {
+      console.error("Erreur inscription:", error);
+      res.status(500).json({ message: "Erreur serveur lors de l'inscription.", error: error.message });
     }
   });
 

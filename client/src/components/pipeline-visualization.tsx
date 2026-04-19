@@ -82,7 +82,7 @@ export function PipelineVisualization() {
             {pipelineStages.map((stage, index) => {
               const StageIcon = stage.icon;
               const stageStatus = currentRun ? 
-                getStageStatus(stage.id, currentRun.stage, currentRun.status) : 
+                getStageStatus(stage.id, currentRun.currentStage ?? "", currentRun.status) : 
                 'pending';
               
               return (
@@ -108,7 +108,7 @@ export function PipelineVisualization() {
                       "flex-1 h-px mx-4 min-w-[2rem]",
                       getConnectorColor(
                         stageStatus, 
-                        currentRun ? getStageStatus(pipelineStages[index + 1].id, currentRun.stage, currentRun.status) : 'pending'
+                        currentRun ? getStageStatus(pipelineStages[index + 1].id, currentRun.currentStage ?? "", currentRun.status) : 'pending'
                       )
                     )}></div>
                   )}
@@ -122,22 +122,13 @@ export function PipelineVisualization() {
           <div className="mt-6 bg-gray-50 rounded-lg p-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-gray-600">
-                Current Stage: {pipelineStages.find(s => s.id === currentRun.stage)?.name || currentRun.stage}
+                Current Stage: {pipelineStages.find(s => s.id === currentRun.currentStage)?.name || currentRun.currentStage}
               </span>
               <span className="text-gray-600">
                 Duration: {currentRun.duration ? formatDuration(currentRun.duration) : 'Calculating...'}
               </span>
             </div>
-            {currentRun.successRate && (
-              <div className="mt-2">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-yellow-500 h-2 rounded-full transition-all duration-500" 
-                    style={{ width: `${currentRun.successRate}%` }}
-                  />
-                </div>
-              </div>
-            )}
+            
           </div>
         )}
       </CardContent>

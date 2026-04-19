@@ -1,10 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, AlertTriangle, PieChart, Rocket } from "lucide-react";
-import type { Metrics } from "@shared/schema";
+import type { DashboardMetrics } from "@shared/schema";
 
 export function MetricsGrid() {
-  const { data: metrics, isLoading } = useQuery<Metrics>({
+  const { data: metrics, isLoading } = useQuery<DashboardMetrics>({
     queryKey: ["/api/metrics"],
   });
 
@@ -41,7 +41,11 @@ export function MetricsGrid() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Pipeline Success Rate</p>
-              <p className="text-3xl font-bold text-green-600">{metrics.successRate}%</p>
+              <p className="text-3xl font-bold text-green-600">
+                {metrics.totalPipelines > 0 
+                  ? Math.round((metrics.successfulPipelines / metrics.totalPipelines) * 100) 
+                  : 0}%
+              </p>
             </div>
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
               <CheckCircle className="h-6 w-6 text-green-600" />
@@ -51,7 +55,7 @@ export function MetricsGrid() {
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-green-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${metrics.successRate}%` }}
+                style={{ width: `${metrics.totalPipelines > 0 ? (metrics.successfulPipelines / metrics.totalPipelines) * 100 : 0}%` }}
               />
             </div>
           </div>
@@ -63,13 +67,13 @@ export function MetricsGrid() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Security Issues</p>
-              <p className="text-3xl font-bold text-yellow-600">{metrics.securityIssues}</p>
+              <p className="text-3xl font-bold text-yellow-600">{metrics.totalSecurityIssues}</p>
             </div>
             <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
               <AlertTriangle className="h-6 w-6 text-yellow-600" />
             </div>
           </div>
-          <p className="text-sm text-gray-500 mt-2">3 Critical, 9 Medium</p>
+          <p className="text-sm text-gray-500 mt-2">{metrics.criticalIssues} Critical, {metrics.mediumIssues} Medium</p>
         </CardContent>
       </Card>
 
@@ -78,7 +82,7 @@ export function MetricsGrid() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Code Coverage</p>
-              <p className="text-3xl font-bold text-cyan-600">{metrics.coverage}%</p>
+              <p className="text-3xl font-bold text-cyan-600">{metrics.averageCoverage}%</p>
             </div>
             <div className="w-12 h-12 bg-cyan-100 rounded-lg flex items-center justify-center">
               <PieChart className="h-6 w-6 text-cyan-600" />
@@ -88,7 +92,7 @@ export function MetricsGrid() {
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-cyan-600 h-2 rounded-full transition-all duration-500" 
-                style={{ width: `${metrics.coverage}%` }}
+                style={{ width: `${metrics.averageCoverage}%` }}
               />
             </div>
           </div>
@@ -100,7 +104,7 @@ export function MetricsGrid() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Deployment Frequency</p>
-              <p className="text-3xl font-bold text-indigo-600">{metrics.deployments}</p>
+              <p className="text-3xl font-bold text-indigo-600">{metrics.totalDeployments}</p>
             </div>
             <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
               <Rocket className="h-6 w-6 text-indigo-600" />
